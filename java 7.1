@@ -1,0 +1,466 @@
+PART A
+import java.sql.*;
+
+public class FetchEmployeeData {
+    public static void main(String[] args) {
+        // Step 1: Database connection details
+        String url = "jdbc:mysql://localhost:3306/testdb"; // Replace 'testdb' with your database name
+        String user = "root"; // Replace with your MySQL username
+        String password = "password"; // Replace with your MySQL password
+
+        // Step 2: JDBC objects
+        Connection con = null;
+        Statement stmt = null;
+        ResultSet rs = null;
+
+        try {
+            // Step 3: Load MySQL JDBC Driver
+            Class.forName("com.mysql.cj.jdbc.Driver");
+
+            // Step 4: Establish connection
+            con = DriverManager.getConnection(url, user, password);
+            System.out.println("✅ Connection established successfully!");
+
+            // Step 5: Create a statement object
+            stmt = con.createStatement();
+
+            // Step 6: Execute SQL query
+            String query = "SELECT EmpID, Name, Salary FROM Employee";
+            rs = stmt.executeQuery(query);
+
+            // Step 7: Display results
+            System.out.println("\n--- Employee Details ---");
+            while (rs.next()) {
+                int id = rs.getInt("EmpID");
+                String name = rs.getString("Name");
+                double salary = rs.getDouble("Salary");
+                System.out.println("EmpID: " + id + ", Name: " + name + ", Salary: " + salary);
+            }
+
+        } catch (ClassNotFoundException e) {
+            System.out.println("❌ MySQL JDBC Driver not found.");
+            e.printStackTrace();
+        } catch (SQLException e) {
+            System.out.println("❌ Database connection or query error.");
+            e.printStackTrace();
+        } finally {
+            // Step 8: Close resources
+            try {
+                if (rs != null) rs.close();
+                if (stmt != null) stmt.close();
+                if (con != null) con.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+
+
+
+
+
+PART B 
+import java.sql.*;
+import java.util.Scanner;
+
+public class ProductCRUD {
+    // Database connection details
+    static final String URL = "jdbc:mysql://localhost:3306/testdb"; // Replace with your DB name
+    static final String USER = "root"; // Replace with your username
+    static final String PASSWORD = "password"; // Replace with your password
+
+    public static void main(String[] args) {
+        Connection con = null;
+        Scanner sc = new Scanner(System.in);
+
+        try {
+            // Load JDBC Driver
+            Class.forName("com.mysql.cj.jdbc.Driver");
+
+            // Establish connection
+            con = DriverManager.getConnection(URL, USER, PASSWORD);
+            con.setAutoCommit(false); // Enable manual transaction control
+            System.out.println("✅ Connected to database successfully.");
+
+            int choice;
+            do {
+                System.out.println("\n=== PRODUCT MANAGEMENT SYSTEM ===");
+                System.out.println("1. Insert Product");
+                System.out.println("2. Display All Products");
+                System.out.println("3. Update Product");
+                System.out.println("4. Delete Product");
+                System.out.println("5. Exit");
+                System.out.print("Enter your choice: ");
+                choice = sc.nextInt();
+
+                switch (choice) {
+                    case 1:
+                        insertProduct(con, sc);
+                        break;
+                    case 2:
+                        displayProducts(con);
+                        break;
+                    case 3:
+                        updateProduct(con, sc);
+                        break;
+                    case 4:
+                        deleteProduct(con, sc);
+                        break;
+                    case 5:
+                        System.out.println("Exiting program...");
+                        break;
+                    default:
+                        System.out.println("Invalid choice! Try again.");
+                }
+            } while (choice != 5);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (con != null) con.close();
+                sc.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    // ---------------------- CREATE ----------------------
+    private static void insertProduct(Connection con, Scanner sc) {
+        try {
+            System.out.print("Enter Product ID: ");
+            int id = sc.nextInt();
+            sc.nextLine(); // consume newline
+            System.out.print("Enter Product Name: ");
+            String name = sc.nextLine();
+            System.out.print("Enter Price: ");
+            double price = sc.nextDouble();
+            System.out.print("Enter Quantity: ");
+            int qty = sc.nextInt();
+
+            String sql = "INSERT INTO Product (ProductID, ProductName, Price, Quantity) VALUES (?, ?, ?, ?)";
+            PreparedStatement pst = con.prepareStatement(sql);
+            pst.setInt(1, id);
+            pst.setString(2, name);
+            pst.setDouble(3, price);
+            pst.setInt(4, qty);
+
+            int rows = pst.executeUpdate();
+            if (rows > 0) {
+                con.commit();
+                System.out.println("✅ Product inserted successfully.");
+            }
+
+        } catch (SQLException e) {
+            try {
+                con.rollback();
+                System.out.println("❌ Insertion failed. Transaction rolled back.");
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    // ---------------------- READ ----------------------
+    private static void displayProducts(Connection con) {
+        try {
+            String sql = "SELECT * FROM Product";
+            Statement stmt = con.createStatement();
+            ResultSet rs = stmt.executeQuery(sql);
+
+            System.out.println("\n--- Product List ---");
+            System.out.printf("%-10s %-20s %-10s %-10s%n", "ID", "Name", "Price", "Quantity");
+            System.out.println("------------------------------------------------------");
+
+            while (rs.next()) {
+                System.out.printf("%-10d %-20s %-10.2f %-10d%n",
+                        rs.getInt("ProductID"),
+                        rs.getString("ProductName"),
+                        rs.getDouble("Price"),
+                        rs.getInt("Quantity"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ---------------------- UPDATE ----------------------
+    private static void updateProduct(Connection con, Scanner sc) {
+        try {
+            System.out.print("Enter Product ID to update: ");
+            int id = sc.nextInt();
+            sc.nextLine(); // consume newline
+            System.out.print("Enter new Product Name: ");
+            String name = sc.nextLine();
+            System.out.print("Enter new Price: ");
+            double price = sc.nextDouble();
+            System.out.print("Enter new Quantity: ");
+            int qty = sc.nextInt();
+
+            String sql = "UPDATE Product SET ProductName=?, Price=?, Quantity=? WHERE ProductID=?";
+            PreparedStatement pst = con.prepareStatement(sql);
+            pst.setString(1, name);
+            pst.setDouble(2, price);
+            pst.setInt(3, qty);
+            pst.setInt(4, id);
+
+            int rows = pst.executeUpdate();
+            if (rows > 0) {
+                con.commit();
+                System.out.println("✅ Product updated successfully.");
+            } else {
+                System.out.println("⚠️ No product found with the given ID.");
+            }
+
+        } catch (SQLException e) {
+            try {
+                con.rollback();
+                System.out.println("❌ Update failed. Transaction rolled back.");
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    // ---------------------- DELETE ----------------------
+    private static void deleteProduct(Connection con, Scanner sc) {
+        try {
+            System.out.print("Enter Product ID to delete: ");
+            int id = sc.nextInt();
+
+            String sql = "DELETE FROM Product WHERE ProductID=?";
+            PreparedStatement pst = con.prepareStatement(sql);
+            pst.setInt(1, id);
+
+            int rows = pst.executeUpdate();
+            if (rows > 0) {
+                con.commit();
+                System.out.println("✅ Product deleted successfully.");
+            } else {
+                System.out.println("⚠️ No product found with the given ID.");
+            }
+
+        } catch (SQLException e) {
+            try {
+                con.rollback();
+                System.out.println("❌ Deletion failed. Transaction rolled back.");
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+}
+
+
+PART C
+CREATE DATABASE studentdb;
+USE studentdb;
+
+CREATE TABLE Student (
+    StudentID INT PRIMARY KEY,
+    Name VARCHAR(50),
+    Department VARCHAR(50),
+    Marks DOUBLE
+);
+package Model;
+
+public class Student {
+    private int studentID;
+    private String name;
+    private String department;
+    private double marks;
+
+    // Constructor
+    public Student(int studentID, String name, String department, double marks) {
+        this.studentID = studentID;
+        this.name = name;
+        this.department = department;
+        this.marks = marks;
+    }
+
+    // Getters and Setters
+    public int getStudentID() { return studentID; }
+    public void setStudentID(int studentID) { this.studentID = studentID; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+
+    public double getMarks() { return marks; }
+    public void setMarks(double marks) { this.marks = marks; }
+
+    @Override
+    public String toString() {
+        return String.format("%-10d %-20s %-15s %-10.2f", studentID, name, department, marks);
+    }
+}
+package Controller;
+
+import java.sql.*;
+import java.util.*;
+import Model.Student;
+
+public class StudentDAO {
+    private final String URL = "jdbc:mysql://localhost:3306/studentdb";
+    private final String USER = "root";       // change as needed
+    private final String PASSWORD = "password"; // change as needed
+
+    private Connection getConnection() throws SQLException, ClassNotFoundException {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        return DriverManager.getConnection(URL, USER, PASSWORD);
+    }
+
+    // CREATE
+    public void addStudent(Student s) {
+        String sql = "INSERT INTO Student (StudentID, Name, Department, Marks) VALUES (?, ?, ?, ?)";
+        try (Connection con = getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+
+            pst.setInt(1, s.getStudentID());
+            pst.setString(2, s.getName());
+            pst.setString(3, s.getDepartment());
+            pst.setDouble(4, s.getMarks());
+
+            int rows = pst.executeUpdate();
+            System.out.println(rows > 0 ? "✅ Student added successfully!" : "⚠️ Failed to add student.");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // READ
+    public List<Student> getAllStudents() {
+        List<Student> students = new ArrayList<>();
+        String sql = "SELECT * FROM Student";
+        try (Connection con = getConnection();
+             Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+
+            while (rs.next()) {
+                Student s = new Student(
+                    rs.getInt("StudentID"),
+                    rs.getString("Name"),
+                    rs.getString("Department"),
+                    rs.getDouble("Marks")
+                );
+                students.add(s);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return students;
+    }
+
+    // UPDATE
+    public void updateStudent(Student s) {
+        String sql = "UPDATE Student SET Name=?, Department=?, Marks=? WHERE StudentID=?";
+        try (Connection con = getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+
+            pst.setString(1, s.getName());
+            pst.setString(2, s.getDepartment());
+            pst.setDouble(3, s.getMarks());
+            pst.setInt(4, s.getStudentID());
+
+            int rows = pst.executeUpdate();
+            System.out.println(rows > 0 ? "✅ Student updated successfully!" : "⚠️ Student not found.");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // DELETE
+    public void deleteStudent(int id) {
+        String sql = "DELETE FROM Student WHERE StudentID=?";
+        try (Connection con = getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+
+            pst.setInt(1, id);
+            int rows = pst.executeUpdate();
+            System.out.println(rows > 0 ? "✅ Student deleted successfully!" : "⚠️ Student not found.");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+package View;
+
+import java.util.*;
+import Model.Student;
+import Controller.StudentDAO;
+
+public class StudentView {
+    private Scanner sc = new Scanner(System.in);
+    private StudentDAO dao = new StudentDAO();
+
+    public void start() {
+        int choice;
+        do {
+            System.out.println("\n=== STUDENT MANAGEMENT SYSTEM ===");
+            System.out.println("1. Add Student");
+            System.out.println("2. View All Students");
+            System.out.println("3. Update Student");
+            System.out.println("4. Delete Student");
+            System.out.println("5. Exit");
+            System.out.print("Enter your choice: ");
+            choice = sc.nextInt();
+
+            switch (choice) {
+                case 1 -> addStudent();
+                case 2 -> viewAllStudents();
+                case 3 -> updateStudent();
+                case 4 -> deleteStudent();
+                case 5 -> System.out.println("Exiting application...");
+                default -> System.out.println("Invalid choice. Try again.");
+            }
+        } while (choice != 5);
+    }
+
+    private void addStudent() {
+        System.out.print("Enter Student ID: ");
+        int id = sc.nextInt();
+        sc.nextLine();
+        System.out.print("Enter Name: ");
+        String name = sc.nextLine();
+        System.out.print("Enter Department: ");
+        String dept = sc.nextLine();
+        System.out.print("Enter Marks: ");
+        double marks = sc.nextDouble();
+
+        dao.addStudent(new Student(id, name, dept, marks));
+    }
+
+    private void viewAllStudents() {
+        List<Student> list = dao.getAllStudents();
+        System.out.println("\n--- Student List ---");
+        System.out.printf("%-10s %-20s %-15s %-10s%n", "ID", "Name", "Department", "Marks");
+        System.out.println("-------------------------------------------------------");
+        for (Student s : list) {
+            System.out.println(s);
+        }
+    }
+
+    private void updateStudent() {
+        System.out.print("Enter Student ID to update: ");
+        int id = sc.nextInt();
+        sc.nextLine();
+        System.out.print("Enter New Name: ");
+        String name = sc.nextLine();
+        System.out.print("Enter New Department: ");
+        String dept = sc.nextLine();
+        System.out.print("Enter New Marks: ");
+        double marks = sc.nextDouble();
+
+        dao.updateStudent(new Student(id, name, dept, marks));
+    }
+
+    private void deleteStudent() {
+        System.out.print("Enter Student ID to delete: ");
+        int id = sc.nextInt();
+        dao.deleteStudent(id);
+    }
+}
